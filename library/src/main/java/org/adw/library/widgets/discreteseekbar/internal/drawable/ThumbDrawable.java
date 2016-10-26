@@ -23,6 +23,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 
 /**
  * <h1>HACK</h1>
@@ -45,10 +46,23 @@ public class ThumbDrawable extends StateDrawable implements Animatable {
     private final int mSize;
     private boolean mOpen;
     private boolean mRunning;
+    private String mText;
+    private Rect mTextBounds = new Rect();
+    private float mTextSize;
+    private boolean mDrawTextValue;
+    private Paint mTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private ColorStateList textColorStateList;
 
-    public ThumbDrawable(@NonNull ColorStateList tintStateList, int size) {
-        super(tintStateList);
+    public ThumbDrawable(@NonNull ColorStateList backgroundColor,
+                         @NonNull ColorStateList textColor,
+                         int size,
+                         float textSize,
+                         boolean drawValueInThumb) {
+        super(backgroundColor);
         mSize = size;
+        mTextSize = textSize;
+        mDrawTextValue = drawValueInThumb;
+        mTextPaint.setColor(textColor.getDefaultColor());
     }
 
     @Override
@@ -67,6 +81,14 @@ public class ThumbDrawable extends StateDrawable implements Animatable {
             Rect bounds = getBounds();
             float radius = (mSize / 2);
             canvas.drawCircle(bounds.centerX(), bounds.centerY(), radius, paint);
+
+            if (mDrawTextValue && !TextUtils.isEmpty(mText)) {
+                setTextSizeForWidth(mTextPaint, bounds.width() * 0.9f, mText);
+                int xPos = (bounds.width() / 2);
+                int yPos = (int) ((bounds.height() / 2) - ((mTextPaint.descent() + mTextPaint.ascent()) / 2));
+
+                canvas.drawText(mText, bounds.left + xPos, bounds.top + yPos, mTextPaint);
+            }
         }
     }
 
@@ -104,5 +126,42 @@ public class ThumbDrawable extends StateDrawable implements Animatable {
     @Override
     public boolean isRunning() {
         return mRunning;
+    }
+
+
+    public void setText(String text) {
+        this.mText = text;
+    }
+
+    public void setTextSize(float textSize) {
+        this.mTextSize = textSize;
+    }
+
+    public void setDrawTextValue(boolean bool) {
+        this.mDrawTextValue = bool;
+    }
+
+    public void setTextColorStateList(ColorStateList textColorStateList) {
+        mTextPaint.setColor(textColorStateList.getDefaultColor());
+    }
+
+    private void setTextSizeForWidth(Paint paint, float desiredWidth, String text) {
+
+        if (!TextUtils.isEmpty(text)) {
+            final float testTextSize = 48f;
+            mTextBounds.set(0, 0, 0, 0);
+
+            paint.setTextSize(testTextSize);
+            paint.getTextBounds(text, 0, text.length(), mTextBounds);
+
+            float desiredTextSize = testTextSize * desiredWidth / mTextBounds.width();
+
+            paint.setTextSize(Math.min(desiredTextSize, mTextSize));
+            paint.setTextAlign(Paint.Align.CENTER);
+        }
+    }
+
+    public void setTextColor(int textColor) {
+        mTextPaint.setColor(textColor);
     }
 }

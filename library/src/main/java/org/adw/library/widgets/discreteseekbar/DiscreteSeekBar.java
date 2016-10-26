@@ -131,6 +131,7 @@ public class DiscreteSeekBar extends View {
     private static final int INDICATOR_DELAY_FOR_TAPS = 150;
     private static final int DEFAULT_THUMB_COLOR = 0xff009688;
     private static final int SEPARATION_DP = 5;
+    private static final int DEFTAULT_THUMB_TEXT_SIZE = 10;
     private ThumbDrawable mThumb;
     private TrackRectDrawable mTrack;
     private TrackRectDrawable mScrubber;
@@ -154,6 +155,7 @@ public class DiscreteSeekBar extends View {
     private StringBuilder mFormatBuilder;
     private OnProgressChangeListener mPublicChangeListener;
     private boolean mIsDragging;
+    private boolean mDrawValueInThumb;
     private int mDragOffset;
 
     private Rect mInvalidateRect = new Rect();
@@ -237,6 +239,7 @@ public class DiscreteSeekBar extends View {
         ColorStateList trackColor = a.getColorStateList(R.styleable.DiscreteSeekBar_dsb_trackColor);
         ColorStateList progressColor = a.getColorStateList(R.styleable.DiscreteSeekBar_dsb_progressColor);
         ColorStateList rippleColor = a.getColorStateList(R.styleable.DiscreteSeekBar_dsb_rippleColor);
+        ColorStateList thumbTextColor = a.getColorStateList(R.styleable.DiscreteSeekBar_dsb_thumbTextColor);
         boolean editMode = isInEditMode();
         if (editMode || rippleColor == null) {
             rippleColor = new ColorStateList(new int[][]{new int[]{}}, new int[]{Color.DKGRAY});
@@ -246,6 +249,9 @@ public class DiscreteSeekBar extends View {
         }
         if (editMode || progressColor == null) {
             progressColor = new ColorStateList(new int[][]{new int[]{}}, new int[]{DEFAULT_THUMB_COLOR});
+        }
+        if (editMode || thumbTextColor == null) {
+            thumbTextColor = new ColorStateList(new int[][]{new int[]{}}, new int[]{Color.WHITE});
         }
 
         mRipple = SeekBarCompat.getRipple(rippleColor);
@@ -263,10 +269,12 @@ public class DiscreteSeekBar extends View {
         mScrubber = shapeDrawable;
         mScrubber.setCallback(this);
 
-        mThumb = new ThumbDrawable(progressColor, thumbSize);
+        mDrawValueInThumb = a.getBoolean(R.styleable.DiscreteSeekBar_dsb_valueInThumb, false);
+        float thumbTextSize = a.getDimension(R.styleable.DiscreteSeekBar_dsb_thumbTextSize, DEFTAULT_THUMB_TEXT_SIZE * density);
+
+        mThumb = new ThumbDrawable(progressColor, thumbTextColor, thumbSize, thumbTextSize, mDrawValueInThumb);
         mThumb.setCallback(this);
         mThumb.setBounds(0, 0, mThumb.getIntrinsicWidth(), mThumb.getIntrinsicHeight());
-
 
         if (!editMode) {
             mIndicator = new PopupIndicator(context, attrs, defStyleAttr, convertValueToMessage(mMax),
@@ -276,7 +284,6 @@ public class DiscreteSeekBar extends View {
         a.recycle();
 
         setNumericTransformer(new DefaultNumericTransformer());
-
     }
 
     /**
@@ -426,9 +433,11 @@ public class DiscreteSeekBar extends View {
      * @param indicatorColor The color the popup indicator will be changed to
      *                       The indicator will animate from thumbColor to indicatorColor
      *                       when opening
+     * @param textColor      The color the seek thumb text will be changed to
      */
-    public void setThumbColor(int thumbColor, int indicatorColor) {
+    public void setThumbColor(int thumbColor, int indicatorColor, int textColor) {
         mThumb.setColorStateList(ColorStateList.valueOf(thumbColor));
+        mThumb.setTextColor(textColor);
         mIndicator.setColors(indicatorColor, thumbColor);
     }
 
@@ -445,6 +454,16 @@ public class DiscreteSeekBar extends View {
         //we use the "pressed" color to morph the indicator from it to its own color
         int thumbColor = thumbColorStateList.getColorForState(new int[]{PRESSED_STATE}, thumbColorStateList.getDefaultColor());
         mIndicator.setColors(indicatorColor, thumbColor);
+    }
+
+    /**
+     * Sets the color of the seek thumb, as well as the color of the popup indicator.
+     *
+     * @param textSize The size the seek thumb text will be changed to
+     *
+     */
+    public void setThumbTextSize(float textSize) {
+        mThumb.setTextSize(textSize);
     }
 
     /**
@@ -666,11 +685,14 @@ public class DiscreteSeekBar extends View {
 
     private void updateProgressMessage(int value) {
         if (!isInEditMode()) {
+            String text = "";
             if (mNumericTransformer.useStringTransform()) {
-                mIndicator.setValue(mNumericTransformer.transformToString(value));
+                text = mNumericTransformer.transformToString(value);
             } else {
-                mIndicator.setValue(convertValueToMessage(mNumericTransformer.transform(value)));
+                text = convertValueToMessage(mNumericTransformer.transform(value));
             }
+            mIndicator.setValue(text);
+            mThumb.setText(text);
         }
     }
 
